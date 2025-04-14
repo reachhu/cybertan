@@ -1,0 +1,212 @@
+# Daily Work - 2025
+
+- Common:
+  - Containerbuild
+  - GitLab
+    - Feed token: LDzMXPkzNQV4dvL2NvEK
+    - New personal access token: "REMOVED_FOR_SECURITY"
+  - CBTPassBLE
+    - Source code (https://gitlab.cybertan.com.tw:20443/9GA300A8/eap/CBTPassBLE/-/tree/main)
+    - release 時需把編完之後的 CBTPassBLE 上傳到 (https://gitlab.cybertan.com.tw:20443/9GA300A8/eap/cybertan_eap_trunk/-/tree/main/feeds/ble_cbt/cbt_ble/files)
+  - scp Containerbuild@192.168.20.102:/home/Containerbuild/eric_build/CBTPassBLE/CBTPassBLE ./CBTPassBLE
+  - git reset xxxxx --hard (git log 取得前 5 碼)
+  - registry.sonicfi-networks.com/66092e82/release/cbtmain:v2.6.0-arm64
+  - screen /dev/tty.usbserial-FT2LZBUE 115200
+
+# 工作日誌 - 2025
+- 2025/03/25
+  - Issues:
+    - csv file 因時間精度不足會出現順序與 log table 不一致的狀況
+    - send command 會出現 busy 的狀況
+  - Auto Test DS - Full Log System
+    1. Basic Function Test
+      - Name: test_feature_view_system_log (feature_full_log_system_001)
+      - Target: 測試 "System Log" 與 "View System Log" 之間的連動是否正確
+      - Description: 當 "System Log" 項目為 Enable 時，進入 "View System Log" 會看到從底層送來的 Log Event List，反之則不會收到新的 Log Event
+      - Tech: 透過後端提供的 HTTP API 來發送 UCI Command 給 Device (Controller / EAP / Switch)，主動發 log event
+        - UCI Command 格式範例如下：
+          - eg. ubus call cbt_event log '{"category":2，"type_id":4，"template_id":1，"whoami":"cbt_manager"，"pid":22，"data":[{"type":10，"value":"successfully"}]}'
+        - 預先紀錄發送 log event 的時間點，並根據時間來撈取 Log Table View 的資料，最後比對 command 的 log message 內容.
+        - Log message 是透過 Log Template 文件組合出來的，每台設備都有2份這樣的文件，其中一份是 Common 所有設備都通用的 Log 類型，並額外包括 Log 分類表（facility）， 另一個檔案是該類型設備獨有的 Log event 列表。（ps.細節請參考該檔案內容）
+    2. 3. 4. (Contrller / EAP / Switch) All Type Logs Test
+      - Name: test_feature_controller_all_type_logs (feature_full_log_system_001)
+      - Target: 分別測試 Controller / EAP / Switch 三種類型的設備的所有類型的 Log event，是否都可正常傳給 cbtmain 並比較內容與順序是否正確(ps. 由於目前Log順序性有Bug，目前先以完整性為主)
+      - Description: 會預先透過 HTTP API 取得該設備所提供的 Template file（內容含有該設備所有可使用的 Log Event），
+      - Tech: 以下說明 Auto Test 如何透過後端提供的 HTTP API 來主動發送 Log Event 給 Controller Service 細節如下:
+          - 先透過 UCI Command 取得每台設備自帶的 Log 文件( ps. 該文件內容為組合 Log 所需資訊，檔案路徑為 "/usr/share/cbtevent/*.json" ），此目錄下總共有2個文件，一個是 templateCommon.json (所有設備都可發送的 Log)，另一個 json file 是此類設備獨有的 log event template，兩者合起來即此設備可傳送的所有類型 Log Event
+          - 接著根據 Log Template 來組合多個可發送 Log Event 的 UCI Command，然後依序發送 Log Event
+          - Know issue: 目前只比對 Log 的完整性，先不比對順序性，由於 Log Table View 的時間只精確到秒，目前已知如果出現一秒鐘有多筆資料時Table順序可能會跟原始的發送順序不一致
+    5. Save Log
+      - Name: test_feature_save_log_file
+      - Target: 測試 Log Table View 內容是否存成 csv 檔案的 Log 內容一致
+      - Description: 
+        - 進入 "View System Log" 頁面並觸發 "Save Log" 的功能
+        - 在 downloads 目錄下讀取已存成功的 Log File，並加以解析
+        - 取得 Log Table View 的所有 Log，並與 Log File 解析出來內容進行比對 
+      - Tech: 
+        - 由於相同目錄下可能存在其他資料，需根據時間(ps. 觸發 "Save Log" 的時間) 與檔案命名規則來讀取正確的 Log 檔案
+        - downloads 共用目錄位置：downloads（"/cbt-auto-testing/downloads"）的目錄是共用的，所以需要檔案命名規則來找檔案。
+        - 解析 Log 檔案內容，由於檔案是 csv 格式, 故可使用 python 3.9 自帶的 csv 工具來進行解析
+    6. Remote Log
+      - Name: test_feature_remote_server_log
+      - Target: 測試 Log Table View 內容是否跟 "Remote Server" 的 Log 內容一致
+      - Description: 
+        - Enable "System Log"：讓各設備可發出 Log Event
+        - Enable "Remote Log Server"，並正確設定 Server 的 IP(192.168.50.240) 與 Port(21603)，讓系統可在接收 Log Event 時同時轉發到 Remote Log Server 上
+        - 主動透過 HTTP API 送 Command 讓設備發送 Event Log
+        - 最後比對 Log Table View 與 Remote Server 上的資料
+      - Tech: 
+        - 此測試需要同時開啟兩個網頁，分別是 Controller Service Web 與 Remote Log Web 頁面
+        - 在過濾 Remote Server 的 Log 時需注意時間差的問題，目前會先減一秒以免漏掉資訊
+    7. Sent Log File by Email
+      - Name: test_feature_mail_log_file
+      - Target: 測試 Log Table View 內容是否能把 Log 檔案並以附件形式寄給 Owner，且內容與 Log Table View一致
+      - Description:
+        - Enable "Mail Server" 並設定 SMTP Server 內容
+        - 進入 "View System Log" 頁面並觸發 "Mail Log" 的功能
+        - 最後比對 Log Table View 寄件備份信箱上的資料
+      - Tech: 
+        - 寄信使用 SMTP protocol，收信使用 IMAP protocol，使用 Gmail API 的方式收發信件，Email 帳號需額外開通權限，目前帳號名稱為 cybertanate03@gmail.com（ps.經測試目前無法寄信給自己, 故寄件者與收件者帳號不能相同)
+        - 由於收件人是設備 Owner 可能會異動，加上收信時間比較不固定，因此目前是先檢查寄件者的寄件備份，來進行比對。
+    8. Notifiy Log by Email
+      - Name: test_feature_mail_log_notification
+      - Target: 測試比較重要的 Log (Critical / Alert / Emergency)是否能成功寄信給 Owner
+      - Description:
+        - Enable "Mail Server" + Setup SMTP Server：準備好 Mail Server 資料
+        - Enable "System Log"：讓設備能發出 Log Event
+        - Enable "Email Notification"：讓 Controller Service 可針對重要 Log Event 寄信給 Owner
+        - 測試程式主動透過 HTTP API 送 Command , 從設備端分別發送 3 種(Critical / Alert / Emergency)等比較重要的 Event Log, 其中每個 Log 就會寄出一封信
+        - 最後比對 Log Table View 與寄件備份信箱上的資料
+      - Tech: 
+        - 同上
+- 2025/03/05
+  - Full System Log
+    - Web 顯示順序與 Log 發送有時會不一致 (ps. 推測跟 Kafka 有關)
+    - Log timstamp 精度需要再增加
+    - refresh Log Table View 時沒有 wait cursor
+    - System Log 基本功能驗證 (3/4，Done)
+      - 名稱: test_feature_view_system_log (feature_full_log_system_001)
+      - 目標: 測試 System Log 與 View System Log 之間的連動是否正確
+      - 概述: 測試系統會透過 tytt command 去連接底層設備(Controller / EAP / Switch)，並主動觸發 Log Event，當 "System Log" 為 Enable 時，"Controller Service" 會接收 log 並顯示在 Web 頁面上，反之若為 disalbe 則不會接收任何 Log Event
+      - Case 1: 測試 Disable "System Log" 時 Log 不會收到
+        - Disable "System Log"
+        - Open "System Log" view
+        - Send log event by tytt (ps. Supported by restful API)
+        - Click refresh button
+        - Log view should not appear new log
+      - Case 2: 測試 Eable "System Log" 時 可正常顯示新收到的 Log
+        - "System Log" should be under default value (Disable)
+        - Enable "System Log"
+        - Open "System Log View"
+        - Send log event by tytt
+        - Click refresh button
+        - Log view should appear new log (Check datetime and log content)
+    - Controller / EAP / Switch Log 完整度 + 順序正確性測試 (3/5 ~ 3/10)
+    - Save Log 功能驗證 (3/11 ~ 3/12)
+    - Remote server Log 功能驗證 (3/13 ~ 3/14)
+    - Mail server Log 功能驗證 (3/17 ~ 3/20)
+- 2025/02/25
+  - 優化設定流程：EAP/Switch批次設定 GUI Switch部分 [仕銓/May/Norman]
+      - 特定的Port啟動了Mirror port，該Port就無法和其他Port做批次設定 (ps. 原因? 使因為連動的 port 必須所有設定狀態都要一致? )
+  - EAP / Switch redirect url 流程方案
+    - 目標: 讓 點點全球 可以有效率的轉移設備
+    - 基於以下假設的客戶轉移設備情境所擬訂的方案
+      - 點點想把 A客戶一批設備轉移給 B客戶
+        - 情境 1: A客戶的設備在 New Portal 上，欲轉移到同為 New Portal 的 B客戶上 (ps. 不用 redirect url)
+        - 情境 2: A客戶的設備在 New Portal 上，欲轉移到 B客戶的 Controller / Rontal Service (ps. 需要 redirect url)
+        - 情境 3: A客戶的設備在 Controller / Rontal Service 上，欲轉移到 New Portal 的 B客戶上 (ps. 需要 redirect url)
+        - 情境 4: A客戶的設備在 Controller / Rontal Service 上，連同 Controller 轉移給 B客戶 (ps. 有機會不用 redirect url)
+      - 客戶轉移流程
+        - 流程 1: (設定 redirect url 之前先進行 remove)(優點: 設備狀態比較明確)
+          - 移除 A客戶設備進行 factory default 並回到 pending 狀態
+          - 設備不需要設定 redirect url 直接跳到 onboarding 流程
+          - 設備需要設定新的 redirect url
+          - 點點幫 B客戶設定新 redirect url，並在原來的 url 環境消失
+          - 待設備出現在新的 redirect url 環境上
+          - 進行設備 onboarding
+        - 流程 2: (單純設定 redirect url 並進行 factory reset)(優點: 步驟較少)
+          - 設定設備新的 redirect url 並進行 factory reset，最後從 DB 中移除 (ps. factory reset 進行一半關電是否會有影響?)
+          - 設備在場域上電之後自動連線新的 redirect url，狀態改為 pending
+          - 進行設備 onboarding
+        - Issues
+          - factory reset 進行一半關電是否會有影響?
+          - 建議: 為避免人為失誤，redirect url 輸入方式除了文字input，另外也可考慮加入讓用戶以選擇 site 的方式進行，由系統根據 site 自動帶出url 
+          - 建議: redirect url 的修改納入 log 紀錄，以利後續追蹤
+          - 建議: 不知客戶是否有一次設定多台 url 需求
+    - 修改 redirect url 時順便做 factory reset
+      - 另外提供 redirect url api
+      - factory reset api 額外帶 redirect url
+    - 修改 redirect url 時不會立即影響現行的url，而是在 factory reset 時才會去參考 redirect url
+      - 對批次修改 redirect url 比較友善
+- 2025/02/20
+  - test_edit_system_log
+    - Disable Log 之後，系統是否正確反映在 log view 中，不再收新的 log event
+    - Enable log
+      - 系統是否能正常收 log event
+      - 確認 log 筆數限制是否正確作用在 lob View 中
+  - test_view_system_log 測試列表
+    - log 種類完整度 (table vs shell script)
+      - Shell script for log sender from devices ( Controller / EAP / Switch )
+      - auto test 調用 script 發送 log
+      - 過濾出 table 所需內容與 script 同時進行比對完整度與正確性
+    - log 順序正確性 (table vs shell script)
+    - log 內容一致性 (ps. table vs file)
+      - save table data to file
+      - compare table data with file
+    - 壓力測試
+      - shell script for stress test
+      - auto test 調用 script 發送 log
+      - 過濾出 table 所需內容與 script 同時進行比對完整度與正確性
+    - 基本操作驗證
+      - Refresh 功能
+      - Search Column 功能(Time / Facility / Severity / Description)
+      - Mail Log 功能(ps. 需搭配 Mail Server 設定)
+      - Save Log 功能(比對檔案資料與Table內容的筆數)
+      - show x ( 10/ 50/ 100 ) items
+      - page 跳動是否正常
+    - Require: 需底層提供 shell script 來模擬發送 event log
+  - test_edit_remote_log
+    - log 內容與本地端一致性驗證 (ps. table vs remove server)
+  - test_mail_server
+    - Trigger email Notification fail and pop message when mail server config is not ready 
+    - Edit and save Mail Server config and enable email Notification trigger normally
+    - Issue: 目前對於信件是否正確送出與收到，尚無比較好的方式，System 寄信是否有 log 可追蹤?
+- 2025/02/12
+  - 命名不統一
+    - update_switch_port_config
+    - update_eap_port_info
+    - update_controller_port
+  - Controller 測試調整
+    - static / pppoe / dynamic-vlan 暫時不測 (ps.影響 internet)
+    - qos 僅支援 dscp.(ps. 暫時不測 8021p)
+- 2025/02/06
+  - CES Demo in Cloud
+    - Demo 版是基於 cbtmain version v2.5.0 版開發的
+    - nodejs 需更新特別版
+    - ucentral 需調整成不更新 Stats
+    - DB 需使用假資料內容
+- 2025/01/23
+  - 底層 debug 相關
+    - 讀取最後20行的 log 資訊: logread -l 20
+    - 重啟daemon: service network restart
+    - 把 netifd log 導向檔案: logread -e netifd -f > /tmp/log.txt &
+    - 印出 states 內容: /usr/share/ucentral/state.uc
+- 2025/01/21
+  - Controller 會因為修改設定導致斷線，現行機制 try 3 次 x 10 秒無法避免此問題
+    - 等到 Device 連線恢復再繼續往下測試
+    - 跟 Switch 一樣 offline 也可正常設定與 query config，待 Device 恢復連線再進行 apply config
+      - 依序 apply config (現行做法)
+      - 直接 apply 最後一次 config
+        - 需考量下列狀況 eg. 先 enable firewall 最後關閉 firewall，這樣一來本來有 client 會因為 firewall 被踢出，此方案就不會
+  - 目前設定若會造成 Device 斷線，若在連續設定三次則會斷線三次
+- 2025/01/15
+  - 解決自測項目 par-device 無法取得 configuration 的問題 (url issues)
+  - 新增 device configuration 物件比對共用元件
+- 2025/01/06
+  - cbt-auto-testing 程式架構與生命週期介紹
+  - eg. def test_get_network_config_api(self，api_obj，env_configuration) 參數型別?
+  - 分類原則? 建議 folow 現行後端 swagger API
+  - multiple site 第二階段完善
+    - portal 維持現況有自己的DB，並管理所有的 site 與 station
+    - ronto service 擴充管理多 site
+    - 當 ronto service 建置時考量可同時帶入用戶的 profile / user account 設定
