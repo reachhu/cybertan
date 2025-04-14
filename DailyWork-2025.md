@@ -14,6 +14,82 @@
   - screen /dev/tty.usbserial-FT2LZBUE 115200
 
 # 工作日誌 - 2025
+- 2025/04/09
+  - 自動化程式碼架構改善
+    - environment configuration 共用設定提到外部 (ps. 考慮增加一層 common_setting 包起來, 各 testbed 裡面有個欄位 common_setting 關聯起來)
+    - allure step 補強
+    - recovery step 可以改成使用 api 的方式達成, gui 操作的方式速度慢且失敗風險較高
+    - 部分共用程式(for verify)碼搬運到 api_obj.py
+  - OpenWRT 測試案例 Q&A
+    - WAN連線驗證[DHCP/PPPoE/Static IP]
+      1. 設定不同Wan[PPPoE可能需要Router Os?]
+        - Q: 需要 PPPoE Server? (請教 QA?) 
+      2. Ping確認狀態
+      3. iperf測試
+        - 測試目標? 可測試的項目很多(eg. throughput / Latency / 丟包測試 / 長時間穩定度測試), 有特別想測試目標嗎?  如果用LANforge 功能上會有重疊, 初期輕量測試可考慮先用 iperf, 但需要時間 survey 一下用法
+
+    - Router & Firewall [reference to EAP?]
+
+    - LAN驗證[DHCP & LANIP]
+      1. 修改DHCP -> Client重新要IP並確認是否能夠Ping通DUT &外部
+      2. 修改LAN & DHCP -> Client重新要IP並確認是否能夠Ping通DUT &外部
+      - Q: 第1,2點的差異?
+        - 第1點單純變更 IP 配發 range, 第2點增加 gateway IP 的異動
+
+    - Wireless連線驗證
+
+    - Change mode連線驗證
+      - Q: mode 指的是 2G / 5G 嗎?
+        - 不是, b/g/n/ac/ax, 但是2.4G/5G 也是要測試.
+
+    - Change security連線驗證
+
+    - Wan/Lan performance --> 監控CPU
+      - Q: 是持續打traffic然後去查看 Memery + CPU 使用情況, 然後回報狀態就好嗎? 還是需要加上 pass/fail 條件? 
+
+    - Wireless (2G/5G) Performance --> 監控CPU
+
+    - 信號強度確認
+      - Q: 測試目標? (請教 QA?)
+
+- 2025/04/07
+  - 完成任務和項目 30%	
+    - 2024/10 ~ 2024/12: 完成前後端 3 個新功能單元測試 / 2 個自測任務 / 1 個 Demo 任務
+    - 2024/12: 與同仁合作完成 1 個參展系統準備
+    - 2025/01 ~ 2025/02: 規劃並完成自動化擴充測項與Captive protal 新功能測項等共 26 項 API 測試案例
+    - 2025/03: 規劃並完成 Full Log System 自動化測試共 8 項 GUI 測試案例
+  - 項目交付時間 30%	
+    - 前後端
+      - 簡易版
+        - "Firmware 一鍵升級 (預計: 2024/11/04, 實際: 2024/11/04)
+        - "SystemLog 測試案例 (預計: 2024/11/25, 實際: 2024/11/23)
+        - "CES demo 環境與假資料準備 (預計: 2024/11/16, 實際: 2024/11/16)
+        - "Switch新功能測項" (預計: 2024/12/31, 實際: 2024/11/25)
+      - 詳細版
+        - 預計於 2024/11/04 完成 "Firmware 一鍵升級" (共 59 項), RD 於 2024/11/04 完成測試.
+        - 預計於 2024/11/25 完成 "SystemLog 測試案例" (共 30 項), RD 於 2024/11/25 完成測試.
+        - 預計於 2024/12/16 完成 "CES demo 環境與假資料準備", RD 於 2024/11/16 完成並提供給業務成功參展
+        - 預計於 2024/12/31 完成 "Switch新功能測項" (共 20 項黑盒測試), RD 於 2024/11/25 完成測試.
+      - 自動化測試:
+        - 簡易版
+          - 自動化擴充測項文案撰寫 (預計: 2025/01/18，實際: 2025/01/17)
+          - Controller / EAP / Switch 擴充測項開發 (預計: 2025/02/13 完成，實際: 2025/02/13)
+          - Captive portal / Radius profile 測試開發 (預計: 2025/02/21 完成，實際: 2025/02/21)
+          - Full Log System (預計:2025/03/30, 實際: 2025/03/24)
+        - 詳細版
+          - 自動化擴充測項文案撰寫預計於 2025/01/18 完成，RD 於 2025/01/17 完成
+          - Controller / EAP / Switch 連動測試開發預計於 2025/02/13 完成，RD 於 2025/02/13 完成.
+          - 新功能 Captive portal + Radius profile 測試開發預計於 2025/02/21 完成，RD 於 2025/02/21 完成
+          - Full Log System 相關測試預計於 2025/03/30 完成, RD 於 2025/03/24 完成並反映相關 Issue.
+    - 新技術學習和應用 or 產品技術能力建立	20%
+        -	Survey並導入黑盒測試前後端 Switch 新功能，加速 RD 自測項目開發
+        - Study Python 並使用於開發自動化測試功能
+        - Study Web GUI 元件定位並完成相關測試
+        - 導入 Selenium IDE 加速 Web GUI 自動化測試
+      - 設計工作品質	20%	
+    - 測試案例已協助找出多個前後端開發問題，並反映給相關 RD
+    - 測案案例皆明確寫出測試目標與步驟以利後續維護 
+
 - 2025/03/25
   - Issues:
     - csv file 因時間精度不足會出現順序與 log table 不一致的狀況
