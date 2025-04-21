@@ -14,6 +14,19 @@
   - screen /dev/tty.usbserial-FT2LZBUE 115200
 
 # 工作日誌 - 2025
+- 2025/04/18
+  - PPPoE Test OpenWrt (https://chatgpt.com/canvas/shared/68019f686320819185b6433f7a23a85a)
+  - 
+
+- 2025/04/16
+  - OpenWRT
+    - 環境架設
+      - Lanforge 本身不支援 PPPoE Server 功能, 故方案一的修正, 由 Lanforge 橋接兩端封包
+    - 硬體設備（重新申請一塊板子）
+    - Boardfarm: 這是一個由 Qualcomm 發展、用來自動化測試 OpenWRT 路由器與其他設備 的開源框架
+      - 用來自動執行 OpenWRT router 的測試腳本（如 ping、iperf、重啟防火牆、WiFi、IPv4/IPv6 等）。
+      - 可整合 CI 工具（如 Jenkins）進行每日建置測試。
+      - 使用 pexpect 操作裝置 CLI，模擬人為操作。 (pexpect: 自動化與 CLI（終端）互動，模擬人類在 terminal 輸入指令、讀取輸出、回應提示。)
 - 2025/04/09
   - 自動化程式碼架構改善
     - environment configuration 共用設定提到外部 (ps. 考慮增加一層 common_setting 包起來, 各 testbed 裡面有個欄位 common_setting 關聯起來)
